@@ -5,13 +5,77 @@
 #include <libmaple/libmaple_types.h>
 #include <libmaple/gpio.h>
 #include <libmaple/usb.h>
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define USB_MASS_HOOK_READ 0x1
-#define USB_MASS_HOOK_WRITE 0x2
+  /* buffer table base address */
+#define BTABLE_ADDRESS       0x00
+
+  /* EP0  */
+  /* rx/tx buffer base address */
+#define ENDP0_RXADDR        (0x18)
+#define ENDP0_TXADDR        (0x58)
+
+  /* EP1  */
+  /* tx buffer base address */
+#define ENDP1_TXADDR        (0x98)
+
+  /* EP2  */
+  /* Rx buffer base address */
+#define ENDP2_RXADDR        (0xD8)
+
+  /* MASS Storage Requests */
+#define REQUEST_GET_MAX_LUN                0xFE
+#define REQUEST_MASS_STORAGE_RESET         0xFF
+
+  /* Hooks */
+#define USB_MASS_HOOK_READ   0x1
+#define USB_MASS_HOOK_WRITE  0x2
+
+  /* USB device state */
+  typedef enum _DEVICE_STATE {
+    DEVICE_STATE_UNCONNECTED,
+    DEVICE_STATE_ATTACHED,
+    DEVICE_STATE_POWERED,
+    DEVICE_STATE_SUSPENDED,
+    DEVICE_STATE_ADDRESSED,
+    DEVICE_STATE_CONFIGURED
+  } DEVICE_STATE;
+
+  /*****************************************************************************/
+  /*********************** Bulk-Only Transfer State machine ********************/
+  /*****************************************************************************/
+#define BOT_STATE_IDLE                0       /* Idle state */
+#define BOT_STATE_DATA_OUT            1       /* Data Out state */
+#define BOT_STATE_DATA_IN             2       /* Data In state */
+#define BOT_STATE_DATA_IN_LAST        3       /* Last Data In Last */
+#define BOT_STATE_CSW_Send            4       /* Command Status Wrapper */
+#define BOT_STATE_ERROR               5       /* error state */
+
+#define BOT_CBW_SIGNATURE             0x43425355
+#define BOT_CSW_SIGNATURE             0x53425355
+#define BOT_CBW_PACKET_LENGTH         31
+
+  /* Bulk-only Command Block Wrapper */
+  typedef struct _BulkOnlyCBW {
+    uint32_t dSignature;
+    uint32_t dTag;
+    uint32_t dDataLength;
+    uint8_t bmFlags;
+    uint8_t bLUN;
+    uint8_t bCBLength;
+    uint8_t CB[16];
+  } BulkOnlyCBW;
+
+  typedef struct _usb_descriptor_config {
+    usb_descriptor_config_header Config_Header;
+    usb_descriptor_interface MASS_Interface;
+    usb_descriptor_endpoint DataInEndpoint;
+    usb_descriptor_endpoint DataOutEndpoint;
+  } __packed usb_descriptor_config;
 
   void usb_mass_enable(gpio_dev *disc_dev, uint8 disc_bit);
   void usb_mass_disable(gpio_dev *disc_dev, uint8 disc_bit);

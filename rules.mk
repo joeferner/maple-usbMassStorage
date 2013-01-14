@@ -5,10 +5,10 @@ d := $(dir)
 BUILDDIRS += $(BUILD_PATH)/$(d)
 
 # Local flags
-CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES) -I./libmaple/usb/usb_lib/
+CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES) -I./libmaple/usb/usb_lib/ -I./libmaple/usb/stm32f1/
 
 # Local rules and targets
-cSRCS_$(d) := usb_mass.c
+cSRCS_$(d) := usb_mass.c usb_mass_config.c
 
 cppSRCS_$(d) := usbMassStorage.cpp
 
