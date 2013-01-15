@@ -18,14 +18,12 @@ extern void usb_mass_init();
 extern void usb_mass_reset();
 extern RESULT usb_mass_data_setup(uint8 request);
 extern RESULT usb_mass_no_data_setup(uint8 request);
-extern RESULT usb_mass_get_interface_setting(uint8 interface, uint8 alt_setting);
+extern RESULT usb_mass_get_interface_setting(uint8 interface, uint8 altSetting);
 extern uint8* usb_mass_get_device_descriptor(uint16 length);
 extern uint8* usb_mass_get_config_descriptor(uint16 length);
 extern uint8* usb_mass_get_string_descriptor(uint16 length);
 extern void usb_mass_set_configuration(void);
 extern void usb_mass_set_device_address(void);
-extern void usb_mass_in(void);
-extern void usb_mass_out(void);
 extern void usb_mass_status_in(void);
 extern void usb_mass_status_out(void);
 extern void usb_mass_clear_feature(void);
@@ -247,42 +245,20 @@ static const usb_descriptor_string usbMassStringProduct = {
   {'S', 0, 't', 0, 'm', 0, 'W', 0, 'i', 0, 'f', 0, 'i', 0},
 };
 
-static ONE_DESCRIPTOR Device_Descriptor = {
+ONE_DESCRIPTOR Device_Descriptor = {
   (uint8*) & usbMassDeviceDescriptor,
   sizeof (usb_descriptor_device)
 };
 
-static ONE_DESCRIPTOR Config_Descriptor = {
+ONE_DESCRIPTOR Config_Descriptor = {
   (uint8*) & usbMassConfigDescriptor,
   sizeof (usb_descriptor_config)
 };
 
 #define N_STRING_DESCRIPTORS 3
-static ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
+ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
   {(uint8*) & usbMassStringLangID, USB_DESCRIPTOR_STRING_LEN(1)},
   {(uint8*) & usbMassStringManufacturer, USB_DESCRIPTOR_STRING_LEN(9)},
   {(uint8*) & usbMassStringProduct, USB_DESCRIPTOR_STRING_LEN(7)}
 };
 
-/*
- * Endpoint callbacks
- */
-static void (*ep_mass_int_in[7])(void) = {
-  usb_mass_in,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process
-};
-
-static void (*ep_mass_int_out[7])(void) = {
-  NOP_Process,
-  usb_mass_out,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process,
-  NOP_Process
-};

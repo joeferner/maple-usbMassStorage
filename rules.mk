@@ -8,7 +8,7 @@ BUILDDIRS += $(BUILD_PATH)/$(d)
 CFLAGS_$(d) := $(WIRISH_INCLUDES) $(LIBMAPLE_INCLUDES) -I./libmaple/usb/usb_lib/ -I./libmaple/usb/stm32f1/
 
 # Local rules and targets
-cSRCS_$(d) := usb_mass.c usb_mass_config.c
+cSRCS_$(d) := usb_mass.c usb_mass_config.c usb_mass_mal.c usb_scsi.c usb_scsi_data.c
 
 cppSRCS_$(d) := usbMassStorage.cpp
 
