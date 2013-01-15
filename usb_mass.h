@@ -10,7 +10,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+  
   /* buffer table base address */
 #define BTABLE_ADDRESS       0x00
 
@@ -74,6 +74,8 @@ extern "C" {
 #define BOT_SEND_CSW_ENABLE           1
 
 #define BULK_MAX_PACKET_SIZE  0x00000040
+
+#define USB_EP1_IN 0x81
 
   /* Bulk-only Command Block Wrapper */
   typedef struct _BulkOnlyCBW {

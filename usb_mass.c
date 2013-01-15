@@ -426,8 +426,6 @@ void usb_mass_bot_abort(uint8_t direction) {
   }
 }
 
-#define USB_EP1_IN 0x81
-
 void usb_mass_transfer_data_request(uint8_t* dataPointer, uint16_t dataLen) {
   UserToPMABufferCopy(dataPointer, GetEPTxAddr(USB_EP1_IN & 0x7F), dataLen);
   SetEPTxCount((USB_EP1_IN & 0x7F), dataLen);
