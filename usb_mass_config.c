@@ -132,8 +132,8 @@ USER_STANDARD_REQUESTS User_Standard_Requests = {
   .User_SetDeviceAddress = usb_mass_set_device_address
 };
 
-#define USB_VID              0x0781 /* TODO change this */
-#define USB_PID              0x556c
+#define USB_VID              0x0483 /* TODO change this */
+#define USB_PID              0x5720
 static const usb_descriptor_device usbMassDeviceDescriptor = {
   .bLength = sizeof (usb_descriptor_device),
   .bDescriptorType = USB_DESCRIPTOR_TYPE_DEVICE,
@@ -145,9 +145,9 @@ static const usb_descriptor_device usbMassDeviceDescriptor = {
   .idVendor = USB_VID,
   .idProduct = USB_PID,
   .bcdDevice = 0x0200,
-  .iManufacturer = 0x01,
-  .iProduct = 0x02,
-  .iSerialNumber = 0x00,
+  .iManufacturer = 1,
+  .iProduct = 2,
+  .iSerialNumber = 3,
   .bNumConfigurations = 0x01,
 };
 
@@ -160,7 +160,7 @@ static const usb_descriptor_device usbMassDeviceDescriptor = {
       uint8 Data[DataSize];                     \
   } __packed
 
-#define MAX_POWER (100 >> 1)
+#define MAX_POWER (500 >> 1)
 const usb_descriptor_config usbMassConfigDescriptor = {
   .Config_Header =
   {
@@ -183,8 +183,8 @@ const usb_descriptor_config usbMassConfigDescriptor = {
     .bNumEndpoints = 0x02,
     .bInterfaceClass = 8, // mass storage
     .bInterfaceSubClass = 6, // SCSI
-    .bInterfaceProtocol = 80, // Bulk-Only
-    .iInterface = 0x00,
+    .bInterfaceProtocol = 0x50, // Bulk-Only
+    .iInterface = 4,
   },
 
   .DataInEndpoint =
@@ -193,7 +193,7 @@ const usb_descriptor_config usbMassConfigDescriptor = {
     .bDescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT,
     .bEndpointAddress = (USB_DESCRIPTOR_ENDPOINT_IN | USB_EP1),
     .bmAttributes = USB_EP_TYPE_BULK,
-    .wMaxPacketSize = 0x200, // 1x 512 bytes
+    .wMaxPacketSize = 0x40,
     .bInterval = 0x00,
   },
 
@@ -203,25 +203,10 @@ const usb_descriptor_config usbMassConfigDescriptor = {
     .bDescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT,
     .bEndpointAddress = (USB_DESCRIPTOR_ENDPOINT_OUT | USB_EP2),
     .bmAttributes = USB_EP_TYPE_BULK,
-    .wMaxPacketSize = 0x200, // 1x 512 bytes
-    .bInterval = 0x01,
+    .wMaxPacketSize = 0x40,
+    .bInterval = 0x00,
   }
 };
-
-/*
-  String Descriptors:
-
-  we may choose to specify any or none of the following string
-  identifiers:
-
-  iManufacturer:    JoeFerner
-  iProduct:         StmWifi
-  iSerialNumber:    NONE
-  iConfiguration:   NONE
-  iInterface(CCI):  NONE
-  iInterface(DCI):  NONE
-
- */
 
 /* Unicode language identifier: 0x0409 is US English */
 static const usb_descriptor_string usbMassStringLangID = {
@@ -245,6 +230,13 @@ static const usb_descriptor_string usbMassStringProduct = {
   {'S', 0, 't', 0, 'm', 0, 'W', 0, 'i', 0, 'f', 0, 'i', 0},
 };
 
+static const usb_descriptor_string usbMassStringSerial = {
+  .bLength = USB_DESCRIPTOR_STRING_LEN(7),
+  .bDescriptorType = USB_DESCRIPTOR_TYPE_STRING,
+  .bString =
+  {'S', 0, 't', 0, 'm', 0, 'W', 0, 'i', 0, 'f', 0, 'i', 0},
+};
+
 ONE_DESCRIPTOR Device_Descriptor = {
   (uint8*) & usbMassDeviceDescriptor,
   sizeof (usb_descriptor_device)
@@ -255,10 +247,10 @@ ONE_DESCRIPTOR Config_Descriptor = {
   sizeof (usb_descriptor_config)
 };
 
-#define N_STRING_DESCRIPTORS 3
 ONE_DESCRIPTOR String_Descriptor[N_STRING_DESCRIPTORS] = {
   {(uint8*) & usbMassStringLangID, USB_DESCRIPTOR_STRING_LEN(1)},
   {(uint8*) & usbMassStringManufacturer, USB_DESCRIPTOR_STRING_LEN(9)},
-  {(uint8*) & usbMassStringProduct, USB_DESCRIPTOR_STRING_LEN(7)}
+  {(uint8*) & usbMassStringProduct, USB_DESCRIPTOR_STRING_LEN(7)},
+  {(uint8*) & usbMassStringSerial, USB_DESCRIPTOR_STRING_LEN(7)}
 };
 

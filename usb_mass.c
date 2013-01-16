@@ -20,6 +20,8 @@ static void usb_mass_bot_cbw_decode();
 static uint8_t* usb_mass_get_max_lun(uint16_t Length);
 static void usb_mass_in(void);
 static void usb_mass_out(void);
+uint32_t usb_mass_sil_write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBufferSize);
+uint32_t usb_mass_sil_read(uint8_t bEpAddr, uint8_t* pBufferPointer);
 
 #define LUN_DATA_LENGTH            1
 
@@ -76,6 +78,7 @@ void usb_mass_init() {
   USB_BASE->CNTR = USBLIB->irq_mask;
 
   nvic_irq_enable(NVIC_USB_LP_CAN_RX0);
+
   USBLIB->state = USB_UNCONNECTED;
 }
 
@@ -112,7 +115,6 @@ void usb_mass_reset() {
   usb_set_ep_rx_count(USB_EP0, Device_Property.MaxPacketSize);
   usb_set_ep_rx_stat(USB_EP0, USB_EP_STAT_RX_VALID);
 
-  USBLIB->state = USB_ATTACHED;
   SetDeviceAddress(0);
 
   deviceState = DEVICE_STATE_ATTACHED;
@@ -122,7 +124,7 @@ void usb_mass_reset() {
 
 void usb_mass_set_configuration(void) {
   if (pInformation->Current_Configuration != 0) {
-    USBLIB->state = USB_CONFIGURED;
+    deviceState = USB_CONFIGURED;
     ClearDTOG_TX(USB_EP1);
     ClearDTOG_RX(USB_EP2);
     botState = BOT_STATE_IDLE;
@@ -138,7 +140,7 @@ void usb_mass_clear_feature(void) {
 }
 
 void usb_mass_set_device_address(void) {
-  USBLIB->state = USB_ADDRESSED;
+  deviceState = USB_ADDRESSED;
 }
 
 void usb_mass_status_in(void) {
@@ -150,30 +152,30 @@ void usb_mass_status_out(void) {
 }
 
 RESULT usb_mass_data_setup(uint8 request) {
-  uint8_t * (*CopyRoutine)(uint16_t);
+  uint8_t * (*copy_routine)(uint16_t);
 
-  CopyRoutine = NULL;
+  copy_routine = NULL;
   if ((Type_Recipient == (CLASS_REQUEST | INTERFACE_RECIPIENT))
           && (request == REQUEST_GET_MAX_LUN) && (pInformation->USBwValue == 0)
           && (pInformation->USBwIndex == 0) && (pInformation->USBwLength == 0x01)) {
-    CopyRoutine = usb_mass_get_max_lun;
+    copy_routine = usb_mass_get_max_lun;
   } else {
     return USB_UNSUPPORT;
   }
 
-  if (CopyRoutine == NULL) {
+  if (copy_routine == NULL) {
     return USB_UNSUPPORT;
   }
 
-  pInformation->Ctrl_Info.CopyData = CopyRoutine;
+  pInformation->Ctrl_Info.CopyData = copy_routine;
   pInformation->Ctrl_Info.Usb_wOffset = 0;
-  (*CopyRoutine)(0);
+  (*copy_routine)(0);
 
   return USB_SUCCESS;
 }
 
-static uint8_t* usb_mass_get_max_lun(uint16_t Length) {
-  if (Length == 0) {
+static uint8_t* usb_mass_get_max_lun(uint16_t length) {
+  if (length == 0) {
     pInformation->Ctrl_Info.Usb_wLength = LUN_DATA_LENGTH;
     return 0;
   } else {
@@ -219,12 +221,12 @@ uint8* usb_mass_get_config_descriptor(uint16 length) {
 }
 
 uint8* usb_mass_get_string_descriptor(uint16 length) {
-  uint8_t wValue0 = pInformation->USBwValue0;
+  uint8_t idx = pInformation->USBwValue0;
 
-  if (wValue0 > 5) {
+  if (idx >= N_STRING_DESCRIPTORS) {
     return NULL;
   } else {
-    return Standard_GetDescriptorData(length, &String_Descriptor[wValue0]);
+    return Standard_GetDescriptorData(length, &String_Descriptor[idx]);
   }
 }
 
@@ -282,8 +284,7 @@ static void usb_mass_out(void) {
   uint8_t CMD;
   CMD = CBW.CB[0];
 
-  dataLength = GetEPRxCount(USB_EP2);
-  PMAToUserBufferCopy(bulkDataBuff, GetEPRxAddr(USB_EP2), dataLength);
+  dataLength = usb_mass_sil_read(USB_EP2, bulkDataBuff);
 
   switch (botState) {
     case BOT_STATE_IDLE:
@@ -307,10 +308,10 @@ static void usb_mass_out(void) {
 }
 
 static void usb_mass_bot_cbw_decode() {
-  uint32_t Counter;
+  uint32_t counter;
 
-  for (Counter = 0; Counter < dataLength; Counter++) {
-    *((uint8_t *) & CBW + Counter) = bulkDataBuff[Counter];
+  for (counter = 0; counter < dataLength; counter++) {
+    *((uint8_t *) & CBW + counter) = bulkDataBuff[counter];
   }
   CSW.dTag = CBW.dTag;
   CSW.dDataResidue = CBW.dDataLength;
@@ -427,8 +428,7 @@ void usb_mass_bot_abort(uint8_t direction) {
 }
 
 void usb_mass_transfer_data_request(uint8_t* dataPointer, uint16_t dataLen) {
-  UserToPMABufferCopy(dataPointer, GetEPTxAddr(USB_EP1_IN & 0x7F), dataLen);
-  SetEPTxCount((USB_EP1_IN & 0x7F), dataLen);
+  usb_mass_sil_write(USB_EP1_IN, dataPointer, dataLen);
 
   SetEPTxStatus(USB_EP1, USB_EP_ST_TX_VAL);
   botState = BOT_STATE_DATA_IN_LAST;
@@ -440,8 +440,7 @@ void usb_mass_bot_set_csw(uint8_t status, uint8_t sendPermission) {
   CSW.dSignature = BOT_CSW_SIGNATURE;
   CSW.bStatus = status;
 
-  UserToPMABufferCopy(((uint8_t *) & CSW), GetEPTxAddr(USB_EP1_IN & 0x7F), BOT_CSW_DATA_LENGTH);
-  SetEPTxCount((USB_EP1_IN & 0x7F), BOT_CSW_DATA_LENGTH);
+  usb_mass_sil_write(USB_EP1_IN, ((uint8_t *) & CSW), BOT_CSW_DATA_LENGTH);
 
   botState = BOT_STATE_ERROR;
   if (sendPermission) {
@@ -450,17 +449,25 @@ void usb_mass_bot_set_csw(uint8_t status, uint8_t sendPermission) {
   }
 }
 
-/*
- * User hooks
- */
-static void (*read_hook)(unsigned, void*) = 0;
-static void (*write_hook)(unsigned, void*) = 0;
+uint32_t usb_mass_sil_write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBufferSize) {
+  /* Use the memory interface function to write to the selected endpoint */
+  UserToPMABufferCopy(pBufferPointer, GetEPTxAddr(bEpAddr & 0x7F), wBufferSize);
 
-void usb_mass_set_hooks(unsigned hook_flags, void (*hook)(unsigned, void*)) {
-  if (hook_flags & USB_MASS_HOOK_READ) {
-    read_hook = hook;
-  }
-  if (hook_flags & USB_MASS_HOOK_WRITE) {
-    write_hook = hook;
-  }
+  /* Update the data length in the control register */
+  SetEPTxCount((bEpAddr & 0x7F), wBufferSize);
+
+  return 0;
+}
+
+uint32_t usb_mass_sil_read(uint8_t bEpAddr, uint8_t* pBufferPointer) {
+  uint32_t dataLength = 0;
+
+  /* Get the number of received data on the selected Endpoint */
+  dataLength = GetEPRxCount(bEpAddr & 0x7F);
+
+  /* Use the memory interface function to write to the selected endpoint */
+  PMAToUserBufferCopy(pBufferPointer, GetEPRxAddr(bEpAddr & 0x7F), dataLength);
+
+  /* Return the number of received data */
+  return dataLength;
 }

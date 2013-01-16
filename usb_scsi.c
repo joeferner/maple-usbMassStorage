@@ -31,6 +31,8 @@ extern uint8_t botState;
 extern uint8_t bulkDataBuff[BULK_MAX_PACKET_SIZE];
 extern uint16_t dataLength;
 
+extern uint32_t usb_mass_sil_write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBufferSize);
+
 /* See usb_mass_mal.c */
 extern uint32_t MAL_massBlockCount[2];
 extern uint32_t MAL_massBlockSize[2];
@@ -271,31 +273,27 @@ void scsi_read_memory(uint8_t lun, uint32_t memoryOffset, uint32_t transferLengt
     if (!SCSI_blockReadCount) {
       usb_mass_mal_read_memory(lun, offset, SCSI_dataBuffer, MAL_massBlockSize[lun]);
 
-      // USB_SIL_Write
-      UserToPMABufferCopy((uint8_t *) SCSI_dataBuffer, GetEPTxAddr(USB_EP1_IN & 0x7F), BULK_MAX_PACKET_SIZE);
-      SetEPTxCount((USB_EP1_IN & 0x7F), BULK_MAX_PACKET_SIZE);
+      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer, BULK_MAX_PACKET_SIZE);
 
       SCSI_blockReadCount = MAL_massBlockSize[lun] - BULK_MAX_PACKET_SIZE;
       SCSI_blockOffset = BULK_MAX_PACKET_SIZE;
     } else {
-      // USB_SIL_Write
-      UserToPMABufferCopy((uint8_t *) SCSI_dataBuffer + SCSI_blockOffset, GetEPTxAddr(USB_EP1_IN & 0x7F), BULK_MAX_PACKET_SIZE);
-      SetEPTxCount((USB_EP1_IN & 0x7F), BULK_MAX_PACKET_SIZE);
+      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer + SCSI_blockOffset, BULK_MAX_PACKET_SIZE);
 
       SCSI_blockReadCount -= BULK_MAX_PACKET_SIZE;
       SCSI_blockOffset += BULK_MAX_PACKET_SIZE;
     }
 
     SetEPTxCount(USB_EP1, BULK_MAX_PACKET_SIZE);
-#ifndef USE_STM3210C_EVAL
     SetEPTxStatus(USB_EP1, USB_EP_ST_TX_VAL);
-#endif    
+
     offset += BULK_MAX_PACKET_SIZE;
     length -= BULK_MAX_PACKET_SIZE;
 
     CSW.dDataResidue -= BULK_MAX_PACKET_SIZE;
     // TODO: Led_RW_ON();
   }
+  
   if (length == 0) {
     SCSI_blockReadCount = 0;
     SCSI_blockOffset = 0;
@@ -332,9 +330,7 @@ void scsi_write_memory(uint8_t lun, uint32_t memoryOffset, uint32_t transferLeng
     }
 
     CSW.dDataResidue -= dataLength;
-#ifndef STM32F10X_CL
     SetEPRxStatus(USB_EP2, USB_EP_ST_RX_VAL); /* enable the next transaction*/
-#endif /* STM32F10X_CL */
 
     // TODO: Led_RW_ON();
   }

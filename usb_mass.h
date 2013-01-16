@@ -10,7 +10,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-  
+
+#define N_STRING_DESCRIPTORS 3
+
   /* buffer table base address */
 #define BTABLE_ADDRESS       0x00
 
@@ -30,10 +32,6 @@ extern "C" {
   /* MASS Storage Requests */
 #define REQUEST_GET_MAX_LUN                0xFE
 #define REQUEST_MASS_STORAGE_RESET         0xFF
-
-  /* Hooks */
-#define USB_MASS_HOOK_READ   0x1
-#define USB_MASS_HOOK_WRITE  0x2
 
   /* USB device state */
   typedef enum _DEVICE_STATE {
@@ -105,15 +103,10 @@ extern "C" {
 
   void usb_mass_enable(gpio_dev *disc_dev, uint8 disc_bit);
   void usb_mass_disable(gpio_dev *disc_dev, uint8 disc_bit);
-  void usb_mass_set_hooks(unsigned hook_flags, void (*hook)(unsigned, void*));
 
   void usb_mass_bot_set_csw(uint8_t cswStatus, uint8_t sendPermission);
   void usb_mass_transfer_data_request(uint8_t* dataPointer, uint16_t dataLen);
   void usb_mass_bot_abort(uint8_t direction);
-
-  static __always_inline void usb_mass_remove_hooks(unsigned hook_flags) {
-    usb_mass_set_hooks(hook_flags, 0);
-  }
 
 #ifdef __cplusplus
 }
