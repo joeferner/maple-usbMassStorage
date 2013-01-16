@@ -28,7 +28,7 @@
 extern BulkOnlyCBW CBW;
 extern BulkOnlyCSW CSW;
 extern uint8_t botState;
-extern uint8_t bulkDataBuff[BULK_MAX_PACKET_SIZE];
+extern uint8_t bulkDataBuff[MAX_BULK_PACKET_SIZE];
 extern uint16_t dataLength;
 
 extern uint32_t usb_mass_sil_write(uint8_t bEpAddr, uint8_t* pBufferPointer, uint32_t wBufferSize);
@@ -53,7 +53,7 @@ uint8_t SCSI_transferState = SCSI_TXFR_IDLE;
 uint32_t SCSI_blockReadCount = 0;
 uint32_t SCSI_blockOffset;
 uint32_t SCSI_counter = 0;
-uint8_t SCSI_dataBuffer[BULK_MAX_PACKET_SIZE * 2]; /* 512 bytes*/
+uint8_t SCSI_dataBuffer[512]; /* 512 bytes (SDCard block size) */
 
 uint8_t scsi_address_management(uint8_t lun, uint8_t cmd, uint32_t lba, uint32_t blockNbr);
 void scsi_read_memory(uint8_t lun, uint32_t memoryOffset, uint32_t transferLength);
@@ -67,18 +67,17 @@ void scsi_inquiry_cmd(uint8_t lun) {
     inquiryData = SCSI_page00InquiryData;
     inquiryDataLength = 5;
   } else {
-
     if (lun == 0) {
       inquiryData = SCSI_standardInquiryData;
     } else {
       inquiryData = SCSI_standardInquiryData2;
     }
 
-    if (CBW.CB[4] <= SCSI_STANDARD_INQUIRY_DATA_LEN)
+    if (CBW.CB[4] <= SCSI_STANDARD_INQUIRY_DATA_LEN) {
       inquiryDataLength = CBW.CB[4];
-    else
+    } else {
       inquiryDataLength = SCSI_STANDARD_INQUIRY_DATA_LEN;
-
+    }
   }
   usb_mass_transfer_data_request(inquiryData, inquiryDataLength);
 }
@@ -270,30 +269,30 @@ void scsi_read_memory(uint8_t lun, uint32_t memoryOffset, uint32_t transferLengt
   }
 
   if (SCSI_transferState == SCSI_TXFR_ONGOING) {
-    if (!SCSI_blockReadCount) {
+    if (SCSI_blockReadCount == 0) {
       usb_mass_mal_read_memory(lun, offset, SCSI_dataBuffer, MAL_massBlockSize[lun]);
 
-      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer, BULK_MAX_PACKET_SIZE);
+      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer, MAX_BULK_PACKET_SIZE);
 
-      SCSI_blockReadCount = MAL_massBlockSize[lun] - BULK_MAX_PACKET_SIZE;
-      SCSI_blockOffset = BULK_MAX_PACKET_SIZE;
+      SCSI_blockReadCount = MAL_massBlockSize[lun] - MAX_BULK_PACKET_SIZE;
+      SCSI_blockOffset = MAX_BULK_PACKET_SIZE;
     } else {
-      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer + SCSI_blockOffset, BULK_MAX_PACKET_SIZE);
+      usb_mass_sil_write(USB_EP1_IN, SCSI_dataBuffer + SCSI_blockOffset, MAX_BULK_PACKET_SIZE);
 
-      SCSI_blockReadCount -= BULK_MAX_PACKET_SIZE;
-      SCSI_blockOffset += BULK_MAX_PACKET_SIZE;
+      SCSI_blockReadCount -= MAX_BULK_PACKET_SIZE;
+      SCSI_blockOffset += MAX_BULK_PACKET_SIZE;
     }
 
-    SetEPTxCount(USB_EP1, BULK_MAX_PACKET_SIZE);
+    SetEPTxCount(USB_EP1, MAX_BULK_PACKET_SIZE);
     SetEPTxStatus(USB_EP1, USB_EP_ST_TX_VAL);
 
-    offset += BULK_MAX_PACKET_SIZE;
-    length -= BULK_MAX_PACKET_SIZE;
+    offset += MAX_BULK_PACKET_SIZE;
+    length -= MAX_BULK_PACKET_SIZE;
 
-    CSW.dDataResidue -= BULK_MAX_PACKET_SIZE;
+    CSW.dDataResidue -= MAX_BULK_PACKET_SIZE;
     // TODO: Led_RW_ON();
   }
-  
+
   if (length == 0) {
     SCSI_blockReadCount = 0;
     SCSI_blockOffset = 0;

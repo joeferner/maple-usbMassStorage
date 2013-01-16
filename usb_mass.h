@@ -11,7 +11,10 @@
 extern "C" {
 #endif
 
-#define N_STRING_DESCRIPTORS 3
+#define N_STRING_DESCRIPTORS 4
+
+#define MAX_PACKET_SIZE            0x40  /* 64B, maximum for USB FS Devices */
+#define MAX_BULK_PACKET_SIZE       0x40  /* 64B, max bulk  Can't use 512 because the internal buffers for USB is only 512B */
 
   /* buffer table base address */
 #define BTABLE_ADDRESS       0x00
@@ -19,15 +22,15 @@ extern "C" {
   /* EP0  */
   /* rx/tx buffer base address */
 #define ENDP0_RXADDR        (0x18)
-#define ENDP0_TXADDR        (0x58)
+#define ENDP0_TXADDR        (ENDP0_RXADDR + MAX_PACKET_SIZE)
 
   /* EP1  */
   /* tx buffer base address */
-#define ENDP1_TXADDR        (0x98)
+#define ENDP1_TXADDR        (ENDP0_TXADDR + MAX_PACKET_SIZE)
 
   /* EP2  */
   /* Rx buffer base address */
-#define ENDP2_RXADDR        (0xD8)
+#define ENDP2_RXADDR        (ENDP0_TXADDR + MAX_BULK_PACKET_SIZE)
 
   /* MASS Storage Requests */
 #define REQUEST_GET_MAX_LUN                0xFE
@@ -70,8 +73,6 @@ extern "C" {
 
 #define BOT_SEND_CSW_DISABLE          0
 #define BOT_SEND_CSW_ENABLE           1
-
-#define BULK_MAX_PACKET_SIZE  0x00000040
 
 #define USB_EP1_IN 0x81
 

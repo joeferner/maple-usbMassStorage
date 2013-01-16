@@ -104,7 +104,6 @@ DEVICE Device_Table = {
   .Total_Configuration = 1
 };
 
-#define MAX_PACKET_SIZE            0x40  /* 64B, maximum for USB FS Devices */
 DEVICE_PROP Device_Property = {
   .Init = usb_mass_init,
   .Reset = usb_mass_reset,
@@ -141,10 +140,10 @@ static const usb_descriptor_device usbMassDeviceDescriptor = {
   .bDeviceClass = 0,
   .bDeviceSubClass = 0,
   .bDeviceProtocol = 0x00,
-  .bMaxPacketSize0 = 0x40,
+  .bMaxPacketSize0 = MAX_PACKET_SIZE,
   .idVendor = USB_VID,
   .idProduct = USB_PID,
-  .bcdDevice = 0x0200,
+  .bcdDevice = 0x0103,
   .iManufacturer = 1,
   .iProduct = 2,
   .iSerialNumber = 3,
@@ -193,8 +192,8 @@ const usb_descriptor_config usbMassConfigDescriptor = {
     .bDescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT,
     .bEndpointAddress = (USB_DESCRIPTOR_ENDPOINT_IN | USB_EP1),
     .bmAttributes = USB_EP_TYPE_BULK,
-    .wMaxPacketSize = 0x40,
-    .bInterval = 0x00,
+    .wMaxPacketSize = MAX_BULK_PACKET_SIZE,
+    .bInterval = 0,
   },
 
   .DataOutEndpoint =
@@ -203,8 +202,8 @@ const usb_descriptor_config usbMassConfigDescriptor = {
     .bDescriptorType = USB_DESCRIPTOR_TYPE_ENDPOINT,
     .bEndpointAddress = (USB_DESCRIPTOR_ENDPOINT_OUT | USB_EP2),
     .bmAttributes = USB_EP_TYPE_BULK,
-    .wMaxPacketSize = 0x40,
-    .bInterval = 0x00,
+    .wMaxPacketSize = MAX_BULK_PACKET_SIZE,
+    .bInterval = 1,
   }
 };
 

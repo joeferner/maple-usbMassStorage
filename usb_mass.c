@@ -36,7 +36,7 @@ uint32_t deviceState = DEVICE_STATE_UNCONNECTED;
 uint8_t botState = BOT_STATE_IDLE;
 BulkOnlyCBW CBW;
 BulkOnlyCSW CSW;
-uint8_t bulkDataBuff[BULK_MAX_PACKET_SIZE];
+uint8_t bulkDataBuff[MAX_BULK_PACKET_SIZE];
 uint16_t dataLength;
 
 /*
@@ -108,7 +108,7 @@ void usb_mass_reset() {
   /* Initialize Endpoint 2 */
   usb_set_ep_type(USB_EP2, USB_EP_EP_TYPE_BULK);
   usb_set_ep_rx_addr(USB_EP2, ENDP2_RXADDR);
-  usb_set_ep_rx_count(USB_EP2, Device_Property.MaxPacketSize);
+  usb_set_ep_rx_count(USB_EP2, usbMassConfigDescriptor.DataOutEndpoint.wMaxPacketSize);
   usb_set_ep_rx_stat(USB_EP2, USB_EP_STAT_RX_VALID);
   usb_set_ep_tx_stat(USB_EP2, USB_EP_STAT_TX_DISABLED);
 
@@ -223,10 +223,10 @@ uint8* usb_mass_get_config_descriptor(uint16 length) {
 uint8* usb_mass_get_string_descriptor(uint16 length) {
   uint8_t idx = pInformation->USBwValue0;
 
-  if (idx >= N_STRING_DESCRIPTORS) {
-    return NULL;
-  } else {
+  if (idx < N_STRING_DESCRIPTORS) {
     return Standard_GetDescriptorData(length, &String_Descriptor[idx]);
+  } else {
+    return NULL;
   }
 }
 
