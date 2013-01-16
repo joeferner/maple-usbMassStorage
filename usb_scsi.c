@@ -283,13 +283,13 @@ void scsi_read_memory(uint8_t lun, uint32_t memoryOffset, uint32_t transferLengt
       SCSI_blockOffset += MAX_BULK_PACKET_SIZE;
     }
 
-    SetEPTxCount(USB_EP1, MAX_BULK_PACKET_SIZE);
     SetEPTxStatus(USB_EP1, USB_EP_ST_TX_VAL);
 
     offset += MAX_BULK_PACKET_SIZE;
     length -= MAX_BULK_PACKET_SIZE;
 
     CSW.dDataResidue -= MAX_BULK_PACKET_SIZE;
+    CSW.bStatus = BOT_CSW_CMD_PASSED;
     // TODO: Led_RW_ON();
   }
 
