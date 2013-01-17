@@ -104,6 +104,7 @@ extern "C" {
 
   void usb_mass_enable(gpio_dev *disc_dev, uint8 disc_bit);
   void usb_mass_disable(gpio_dev *disc_dev, uint8 disc_bit);
+  void usb_mass_loop();
 
   void usb_mass_bot_set_csw(uint8_t cswStatus, uint8_t sendPermission);
   void usb_mass_transfer_data_request(uint8_t* dataPointer, uint16_t dataLen);

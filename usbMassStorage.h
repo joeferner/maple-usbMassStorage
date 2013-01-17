@@ -11,6 +11,7 @@ class USBMassStorageDriver {
 public:
   void begin();
   void end();
+  void loop();
 };
 
 extern USBMassStorageDriver USBMassStorage;

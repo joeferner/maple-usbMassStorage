@@ -38,6 +38,8 @@ BulkOnlyCBW CBW;
 BulkOnlyCSW CSW;
 uint8_t bulkDataBuff[MAX_BULK_PACKET_SIZE];
 uint16_t dataLength;
+uint8_t inRequestPending;
+uint8_t outRequestPending;
 
 /*
  * Endpoint callbacks
@@ -250,61 +252,74 @@ void usb_mass_disable(gpio_dev *disc_dev, uint8 disc_bit) {
   gpio_write_bit(disc_dev, disc_bit, 1);
 }
 
+void usb_mass_loop() {
+  if (inRequestPending) {
+    inRequestPending = 0;
+
+    switch (botState) {
+      case BOT_STATE_CSW_Send:
+      case BOT_STATE_ERROR:
+        botState = BOT_STATE_IDLE;
+        SetEPRxStatus(USB_EP2, USB_EP_ST_RX_VAL); /* enable the Endpoint to receive the next cmd*/
+        break;
+      case BOT_STATE_DATA_IN:
+        switch (CBW.CB[0]) {
+          case SCSI_READ10:
+            scsi_read10_cmd(CBW.bLUN, SCSI_lba, SCSI_blkLen);
+            break;
+        }
+        break;
+      case BOT_STATE_DATA_IN_LAST:
+        usb_mass_bot_set_csw(BOT_CSW_CMD_PASSED, BOT_SEND_CSW_ENABLE);
+        SetEPRxStatus(USB_EP2, USB_EP_ST_RX_VAL);
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  if (outRequestPending) {
+    outRequestPending = 0;
+
+    uint8_t CMD;
+    CMD = CBW.CB[0];
+
+    switch (botState) {
+      case BOT_STATE_IDLE:
+        usb_mass_bot_cbw_decode();
+        break;
+      case BOT_STATE_DATA_OUT:
+        if (CMD == SCSI_WRITE10) {
+          scsi_write10_cmd(CBW.bLUN, SCSI_lba, SCSI_blkLen);
+          break;
+        }
+        usb_mass_bot_abort(BOT_DIR_OUT);
+        scsi_set_sense_data(CBW.bLUN, SCSI_ILLEGAL_REQUEST, SCSI_INVALID_FIELED_IN_COMMAND);
+        usb_mass_bot_set_csw(BOT_CSW_PHASE_ERROR, BOT_SEND_CSW_DISABLE);
+        break;
+      default:
+        usb_mass_bot_abort(BOT_DIR_BOTH);
+        scsi_set_sense_data(CBW.bLUN, SCSI_ILLEGAL_REQUEST, SCSI_INVALID_FIELED_IN_COMMAND);
+        usb_mass_bot_set_csw(BOT_CSW_PHASE_ERROR, BOT_SEND_CSW_DISABLE);
+        break;
+    }
+  }
+}
+
 /*
  *  IN
  */
 static void usb_mass_in(void) {
-  switch (botState) {
-    case BOT_STATE_CSW_Send:
-    case BOT_STATE_ERROR:
-      botState = BOT_STATE_IDLE;
-      SetEPRxStatus(USB_EP2, USB_EP_ST_RX_VAL); /* enable the Endpoint to receive the next cmd*/
-      break;
-    case BOT_STATE_DATA_IN:
-      switch (CBW.CB[0]) {
-        case SCSI_READ10:
-          scsi_read10_cmd(CBW.bLUN, SCSI_lba, SCSI_blkLen);
-          break;
-      }
-      break;
-    case BOT_STATE_DATA_IN_LAST:
-      usb_mass_bot_set_csw(BOT_CSW_CMD_PASSED, BOT_SEND_CSW_ENABLE);
-      SetEPRxStatus(USB_EP2, USB_EP_ST_RX_VAL);
-      break;
-
-    default:
-      break;
-  }
+  inRequestPending = 1;
 }
 
 /*
  *  OUT
  */
 static void usb_mass_out(void) {
-  uint8_t CMD;
-  CMD = CBW.CB[0];
-
   dataLength = usb_mass_sil_read(USB_EP2, bulkDataBuff);
-
-  switch (botState) {
-    case BOT_STATE_IDLE:
-      usb_mass_bot_cbw_decode();
-      break;
-    case BOT_STATE_DATA_OUT:
-      if (CMD == SCSI_WRITE10) {
-        scsi_write10_cmd(CBW.bLUN, SCSI_lba, SCSI_blkLen);
-        break;
-      }
-      usb_mass_bot_abort(BOT_DIR_OUT);
-      scsi_set_sense_data(CBW.bLUN, SCSI_ILLEGAL_REQUEST, SCSI_INVALID_FIELED_IN_COMMAND);
-      usb_mass_bot_set_csw(BOT_CSW_PHASE_ERROR, BOT_SEND_CSW_DISABLE);
-      break;
-    default:
-      usb_mass_bot_abort(BOT_DIR_BOTH);
-      scsi_set_sense_data(CBW.bLUN, SCSI_ILLEGAL_REQUEST, SCSI_INVALID_FIELED_IN_COMMAND);
-      usb_mass_bot_set_csw(BOT_CSW_PHASE_ERROR, BOT_SEND_CSW_DISABLE);
-      break;
-  }
+  outRequestPending = 1;
 }
 
 static void usb_mass_bot_cbw_decode() {

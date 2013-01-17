@@ -10,4 +10,8 @@ void USBMassStorageDriver::end() {
   usb_mass_disable(BOARD_USB_DISC_DEV, BOARD_USB_DISC_BIT);
 }
 
+void USBMassStorageDriver::loop() {
+  usb_mass_loop();
+}
+
 USBMassStorageDriver USBMassStorage;
