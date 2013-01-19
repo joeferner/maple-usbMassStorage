@@ -64,6 +64,13 @@ static void (*ep_mass_int_out[7])(void) = {
   NOP_Process
 };
 
+/**
+ * override the default found in boards_setup.cpp
+ */
+void board_setup_usb(void) {
+
+}
+
 void usb_mass_init() {
   pInformation->Current_Configuration = 0;
 
