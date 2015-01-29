@@ -1,3 +1,4 @@
+# WARNING: I am no longer maintaining this software. The code is here for historical reasons and hopefully it will help someone.
 
 # maple-usbMassStorage
 
